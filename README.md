@@ -60,6 +60,16 @@
 [50.GCD定时器](#50)  
 [51.命名空间及应用](#51)  
 [52.数据绑定的封装](#52)  
+[53.基于CSS样式的富文本](#53)  
+[54.阴影视差效果的封装](#54)  
+[55.使用协调器模式管理控制器](#55)  
+[56.判断字符串是否为空](#56)  
+[57.避免将字符串硬编码在代码中](#57)  
+[58.恢复非正常终止的应用状态](#58)  
+[59.清晰的错误处理类型Result](#59)  
+[60.插件化子控制器](#60)  
+[61.ExpressibleBy协议集:通过字面量实例化对象](#61)  
+[62.插件化TableView](#62)  
 
 
 
@@ -75,6 +85,9 @@
 [6.多重光标操作](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#6)  
 [7.断点对象预览](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#7)  
 [8.Storyboard解耦](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#8)  
+[9.获取app的启动日志](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#9)  
+[10.模拟器录屏](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#10)   
+[11.AutoLayout约束错误声音提示](https://github.com/DarielChen/iOSTips/blob/master/XcodeTips/XcodeTips.md#11)  
 
 
 <h2 id="1">1.常用的几个高阶函数</h2>  
@@ -4769,3 +4782,883 @@ class Bindable<Value> {
 [:arrow_up: 返回目录](#table-of-contents)  
 
 
+<h2 id="53">53.基于CSS样式的富文本</h2>  
+
+iOS对于富文本的操作一直不是那么方便，一般涉及到富文本的页面我们会优先考虑使用`WebView`，`CSS`一方面样式丰富，另一方面是写起来简单。
+
+其实`NSAttributedString`也是支持带有CSS样式的文本的，其`DocumentType`有一个类型为`html`。
+
+下面给出了一个富文本的封装，可以便捷操作`NSAttributedString`。
+
+```swift
+extension NSAttributedString {
+    
+    convenience init(text: String, styles: [String: String]) {
+        
+        // 字典转CSS样式字符串
+        let style = styles.compactMap({ (property, value) -> String in
+            return "\(property): \(value)"
+        }).joined(separator: ";")
+        
+        // 生成span标签对应的富文本
+        try! self.init(
+            data: Data("<span style=\"\(style)\">\(text)</span>".utf8),
+            options: [.documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue],
+            documentAttributes: nil
+        )
+    }
+    
+    /// 可以通过"+"拼接NSAttributedString对象
+    static func +(lhs: NSAttributedString, rhs: NSAttributedString) -> NSAttributedString {
+        
+        let concatenatedString = NSMutableAttributedString(attributedString: lhs)
+        concatenatedString.append(rhs)
+        return concatenatedString
+    }
+}
+
+```
+使用：  
+
+绘制一个如下图的`Label`
+
+<img src="https://github.com/DarielChen/iOSTips/blob/master/Source/attributed_url.png" width=300>
+
+```swift
+// 统一的样式
+enum Styles {
+
+    static let `protocol` = [
+        "color" : "#7B68EE",
+        "font-size": "32px",
+        "font-style": "italic",
+    ]
+    
+    static let separator = [
+        "color" : "#B22222",
+        "font-size": "28px",
+    ]
+    
+    static let hostname = [
+        "color" : "#20B2AA",
+        "font-size": "34px",
+        "text-decoration": "underline",
+    ]
+    
+    static let path = [
+        "color" : "#FFDEAD",
+        "font-size": "32px",
+        "text-decoration": "underline",
+        "font-style": "oblique",
+    ]
+}
+
+
+let `protocol` = NSAttributedString(text: "https", styles: Styles.protocol)
+let separator = NSAttributedString(text: "://", styles: Styles.separator)
+let hostname = NSAttributedString(text: "github.com", styles: Styles.hostname)
+let path = NSAttributedString(text: "/DarielChen/iOSTips", styles: Styles.path)
+        
+label.attributedText = `protocol` + separator + hostname + path
+
+```
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="54">54.阴影视差效果的封装</h2>  
+
+在`iPhone`锁屏页面上下左右翻转`iPhone`，锁屏壁纸会沿着各个方向发生位移，有一个独特的视差效果。这是利用了陀螺仪，好在苹果有相关的API支持，使用起来不是那么复杂。
+
+我们可以把这个API用在自己的项目中，比如改变阴影的位移。  
+
+<img src="https://github.com/DarielChen/iOSTips/blob/master/Source/shadow_move.gif" width=500>  
+
+```swift
+    blueView.cornerRadius = 6
+    blueView.borderWidth = 2
+    blueView.borderColor = .lightGray
+       
+    blueView.shadowColor = UIColor.darkGray
+    blueView.shadowRadius = 6
+    blueView.shadowOpacity = 0.5
+    blueView.shadowOffset = CGSize(width: 8, height: 8)
+    
+    // 基于位置的偏移    
+    // blueView.shadowMotionOffset = CGSize(width: 12, height: 12)
+    // 阴影的偏移
+    blueView.motionOffset = CGSize(width: 12, height: 12)
+```
+
+具体实现 [猛击](https://github.com/DarielChen/SwiftTips/blob/master/SwiftTipsDemo/DCTool/Extension/UIView%2BExtension.swift)  
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="55">55.使用协调器模式管理控制器</h2>  
+
+
+对于控制器之间的跳转，最方便的操作是在需要跳转的地方创建目标控制器，但这种方式总觉得不是太合适。
+
+* 当前控制器和目标控制器本质上是同一类型对象，不应该在当前控制器的某个方法中创建目标控制器。
+* 控制器的创建分散在控制器中，不便于统一管理和模块化开发。
+
+使用协调器模式就可以解决上面两个问题。
+
+使用协调器模式的优点：  
+ 1. 将控制器的创建，配置和切换从控制器层级中剥离开，放到协调器层级中
+ 2. 控制器不再通过导航控制器`push`或`present`目标控制器
+ 3. 控制器之间的结构更清晰，易于调试
+ 4. 协调器中可以嵌套子协调器，使减小模块与模块之间的耦合度
+
+ 当然了协调器模式也会有缺点：
+  1. 协调器不可避免会带来更多的代码，很多操作都要使用代理
+  2. 有时还会需要多级代理来传递数据
+
+  虽然有缺点但协调器模式还是值得一用。
+
+
+#### 协调器模式的使用流程
+
+```swift
+// 所有的协调器遵守的协议
+protocol Coordinator {
+    // 设置协调器初始模块
+    func start()
+}
+```
+##### 1. 主协调器
+主协调器`AppCoordinator`负责管理所有的子协调器，并设置所有子协调器的代理为自身，实现代理方法，作为子协调器之间的切换操作。
+
+##### 2. 统一管理用Storyboard创建的控制器
+```swift
+extension UIStoryboard {
+    
+    // MARK: - 获取对应的Storyboard
+    private static var main: UIStoryboard {
+        return UIStoryboard(name: "Main", bundle: nil)
+    }
+    // MARK: - Storyboard中控制器管理
+    static func instantiateMainViewController(delegate: MainViewControllerDelegate) -> MainViewController {
+        let mainVc = main.instantiateViewController(withIdentifier: "MainViewController") as! MainViewController
+        mainVc.delegate = delegate
+        return mainVc
+    }
+}
+```
+利用`extension`加了一层封装，用起来方便一些。
+
+##### 3. 子协调器
+子协调器的实现类似主协调器，每个子协调器负责管理一个模块，模块内部的控制器跳转交给子协调器管理，主协调器管理所有的子协调器。实例代码中有两个子模块`Auth`和`Main`。
+
+具体实现 [猛击](https://github.com/DarielChen/iOSTips/blob/master/Demo/55.%e4%bd%bf%e7%94%a8%e5%8d%8f%e8%b0%83%e5%99%a8%e6%a8%a1%e5%bc%8f%e7%ae%a1%e7%90%86%e6%8e%a7%e5%88%b6%e5%99%a8)
+
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="56">56.判断字符串是否为空</h2>  
+
+这个空可能是`nil` `单个空格` `多个空格` `tab` `return` `全角空格`。
+
+#### 1. 使用`isEmpty`
+
+`isEmpty`无法判断多个空字符串组合的情况。
+
+```swift
+ print("str".isEmpty)  // false
+ print("".isEmpty)     // true
+ print("  ".isEmpty)   // false
+```
+因为`isEmpty`的实现逻辑是基于`startIndex`和`endIndex`。下面是`Collection.swift`中关于`isEmpty`的实现过程。
+
+```swift
+public var isEmpty: Bool {
+  return startIndex == endIndex
+}
+```
+`isEmpty`不能满足需要。
+
+#### 2. 判断字符串中是否包含空格
+
+`isWhitespace`可以实现，但每一次都需要遍历这个字符串。这个遍历我们可以用`allSatisfy`这个高阶函数实现，`allSatisfy`只有当所有的元素满足条件才会返回`true`，否则返回`false`。
+
+```swift
+extension String {
+    var isBlank: Bool {
+        return allSatisfy({ $0.isWhitespace })
+    }
+}
+
+"str".isBlank          // false
+"   str   ".isBlank    // false
+"".isBlank             // true
+" ".isBlank            // true
+"\t\r\n".isBlank       // true
+"\u{00a0}".isBlank     // true
+
+```
+需要判断字符串是否为空，我们为可选类型添加扩展
+
+```swift
+extension Optional where Wrapped == String {
+    var isBlank: Bool {
+        return self?.isBlank ?? true
+    }
+}
+
+var str: String? = nil
+str.isBlank            // true
+str = ""               
+str.isBlank            // true
+str = "  \t  "               
+str.isBlank            // true
+str = "Dariel"
+str.isBlank            // false
+```
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="57">57.避免将字符串硬编码在代码中</h2>  
+
+之前都是直接把字符串写在代码中的，思考了一下觉得代码在整洁性和灵活性上有欠缺，其实可以做下统一管理。项目后期要是需要添加国际化也方便一些。
+
+但如果整个项目的字符串都做统一管理，在开发效率上就会有折扣，所以决定在每个包含字符串的文件中添加`String` `Extension`
+
+```swift
+fileprivate extension String {
+    
+    static let recordCell = "recordCell"
+    static let showPlayer = "showPlayer"
+    static let uuidPathKey = "uuidPath"
+    
+    static let submit = NSLocalizedString("提交", comment: "提交按钮的标题")
+    static let pause = NSLocalizedString("暂停", comment: "")
+    static let save = NSLocalizedString("保存", comment: "")
+}
+```
+对于显示在UI上的文字使用`NSLocalizedString`。
+
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="58">58.恢复非正常终止的应用状态</h2>
+
+App 进入后台后，长时间不使用，或者系统觉得内存不够了，会被自动清理掉。下次再启动的时候，原先的页面和在页面上的操作没有了，用户体验不友好。其实苹果提供了该问题的解决方案。
+
+冷启动恢复状态分为两步：
+1. 恢复之前栈中存在的控制器
+2. 恢复页面上的内容
+
+#### 1. 控制器栈的恢复
+
+##### 1. 在`AppDelegate`中实现两个方法
+
+```swift
+
+func application(_ application: UIApplication, shouldSaveApplicationState coder: NSCoder) -> Bool {
+
+    return true
+}
+func application(_ application: UIApplication, shouldRestoreApplicationState coder: NSCoder) -> Bool {
+
+    return true
+}
+```
+
+##### 2. 设置`Restoration ID`
+
+###### 1. 对于使用`xib`或者`Storyboard`创建的控制器，需要在如下图添加`Restoration ID`
+
+
+<img src="https://github.com/DarielChen/iOSTips/blob/master/Source/restoration_id.png" width=250>  
+
+###### 2.对于纯代码创建的控制器
+
+需要遵守`UIViewControllerRestoration`协议，并实现`withRestorationIdentifierPath`方法，在这个方法中初始化目标控制器。
+
+```swift
+extension LastViewController: UIViewControllerRestoration {
+    static func viewController(withRestorationIdentifierPath identifierComponents: [String], coder: NSCoder) -> UIViewController? {
+        let vc = LastViewController()
+        return vc
+    }
+}
+```
+
+#### 2. 控制器状态的恢复
+
+例子，恢复控制器中的一个`UITextField`输入文本。
+
+```swift
+extension SecondViewController {
+
+    override func encodeRestorableState(with coder: NSCoder) {
+        super.encodeRestorableState(with: coder)
+
+        guard let input = inputField.text, isViewLoaded else {
+            return
+        }
+        coder.encode(input, forKey: .encodingKeyFieldValue)
+    }
+
+    override func decodeRestorableState(with coder: NSCoder) {
+        super.decodeRestorableState(with: coder)
+        assert(isViewLoaded, "We assume the controller is never restored without loading its view first.")
+        inputField.text = coder.decodeObject(forKey: .encodingKeyFieldValue) as? String
+    }
+
+    override func applicationFinishedRestoringState() {
+        print("Finished restoring everything.")
+    }
+}
+
+fileprivate extension String {
+    static let encodingKeyFieldValue = "encodingKeyFieldValue"
+}
+```
+
+#### 3.调试
+
+1. 使用`Xcode`将项目在真机或模拟器上跑起来
+2. 按`Home`键将项目退到后台
+3. 点击`Xcode`的停止项目按钮
+4. 打开非正常终止的项目
+
+具体实现 [猛击](https://github.com/DarielChen/iOSTips/blob/master/Demo/58.%e6%81%a2%e5%a4%8d%e9%9d%9e%e6%ad%a3%e5%b8%b8%e7%bb%88%e6%ad%a2%e7%9a%84%e5%ba%94%e7%94%a8%e7%8a%b6%e6%80%81)
+
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="59">59.清晰的错误处理类型Result</h2>
+
+Swift5.0的标准库中加入了一个新的类型`Result`，使用`Result`可以更清晰的处理代码中的错误。`Result`是一个枚举，分为两种类型`success`和`failure`，都是泛型实现，其中`failure`必须遵守`Error`协议。
+
+### 1. 简化网络请求
+
+网络请求必然要返回成功和失败信息，通常的做法请求成功和失败分别搞一个闭包。
+
+```swift
+
+enum NetError: Error {
+    case urlError
+    case otherError(Error)
+}
+
+// 调用
+requestURL("url", success: { data in
+ // success
+}) { error in
+ // failure
+}
+
+// 实现
+func requestURL(_ url: String, success: @escaping (Data?) -> Void, error: ((NetError) -> Void)? = nil) {
+    guard let requestURL = URL(string: url) else {
+        error?(.urlError)
+        return
+    }
+    URLSession.shared.dataTask(
+        with: URLRequest(url: requestURL),
+        completionHandler: { data, _, err in
+            if let e = err {
+                error?(.otherError(e))
+            } else {
+                success(data)
+            }
+    }).resume()
+}
+```
+
+使用`Result`之后
+
+```swift
+// 调用
+requestURL("url") { result in
+    switch result {
+    case .success(let data):
+        // success
+    case .failure(let error):
+        // failure
+    }
+}
+
+// 实现
+func requestURL(_ url: String, completionHandler: @escaping (Result<Data?, NetError>) -> Void) {
+        guard let requestURL = URL(string: url) else {
+            completionHandler(.failure(.urlError))
+            return
+        }
+        URLSession.shared.dataTask(
+            with: URLRequest(url: requestURL),
+            completionHandler: { data, _, err in
+                if let e = err {
+                    completionHandler(.failure(.otherError(e)))
+                } else {
+                    completionHandler(.success(data))
+                }
+        }).resume()
+}
+```
+
+使用`Result`之后可以在一个`switch`语句中统一处理成功和失败的情况。
+
+### 2. `try-catch`与`Result`的转换
+
+如果一个方法中有`try-catch`，而我们又想在方法调用的地方处理错误，那就需要`throws`，但使用`throws`我一直觉得可读性不好。这时我们就可以使用`Result`替换`try-catch`。
+
+```swift
+let result = Result { try ... }
+```
+
+下面将带有`try-catch`的`decode`转化为返回`Result`的`decode`。
+
+```swift
+
+// try-catch
+func decode<T: Codable>(data: Data) throws -> T {
+    do {
+        return try JSONDecoder().decode(T.self, from: data)
+    }catch {
+        throw error
+    }
+}
+
+// Result
+func decode<T: Codable>(data: Data) -> Result<T, Error> {
+
+    return Result {
+        try JSONDecoder().decode(T.self, from: data)
+    }
+}
+```
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="60">60.插件化子控制器</h2>
+
+在实际开发中经常会碰到比较复杂的页面结构，为了让代码清晰就需要其拆分。可以拆分成多个`UIView`或多个`UIViewController`，像我个人还是更喜欢`UIViewController`一点，一方面是它拥有生命周期方法，另一方面是控制器之间会更独立一点，代码之间的耦合性会小一点。
+
+### 1.添加子控制器的方法
+
+1. 代码添加删除
+
+```swift
+extension UIViewController {
+    func add(_ child: UIViewController) {
+        addChild(child)
+        view.addSubview(child.view)
+        child.didMove(toParent: self)
+    }
+
+    func remove() {
+        // 避免重复删除
+        guard parent != nil else {
+            return
+        }
+
+        willMove(toParent: nil)
+        view.removeFromSuperview()
+        removeFromParent()
+    }
+}
+```
+
+2.`Stroyboard`中添加
+
+[37.给UIViewController添加静态Cell](#37)  
+
+### 2.可上下滚动的`StackViewController`
+
+页面结构一复杂，内容高度很容易超过屏幕高度，就需要视图支持上下拖动，`UIScrollView`和`UIStackView`无疑是一对好的组合。下面给出了一个自定义的`StackViewController`。
+
+#### 1. 继承实现
+
+```swift
+class StackViewController: UIViewController {
+    private let scrollView = UIScrollView()
+    private let stackView = UIStackView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.addSubview(scrollView)
+        scrollView.addSubview(stackView)
+        setupConstraints()
+        stackView.axis = .vertical
+    }
+
+    private func setupConstraints() {
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+
+            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
+            stackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
+            stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
+            stackView.widthAnchor.constraint(equalTo: view.safeAreaLayoutGuide.widthAnchor)
+        ])
+    }
+}
+
+extension StackViewController {
+    func add(_ child: UIViewController, size: CGSize) {
+        addChild(child)
+        stackView.addArrangedSubview(child.view)
+        child.didMove(toParent: self)
+
+        child.view.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            child.view.heightAnchor.constraint(equalToConstant: size.height),
+            child.view.widthAnchor.constraint(equalToConstant:size.width)
+        ])
+    }
+
+    func remove(_ child: UIViewController) {
+        guard child.parent != nil else {
+            return
+        }
+
+        child.willMove(toParent: nil)
+        stackView.removeArrangedSubview(child.view)
+        child.view.removeFromSuperview()
+        child.removeFromParent()
+    }
+}
+```
+
+使用：添加三个屏幕宽度，高度为500的控制器`View`到`ViewController`上。
+
+```swift
+class ViewController: StackViewController {
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        let vc1 = UIViewController()
+        vc1.view.backgroundColor = UIColor.orange
+
+        let vc2 = UIViewController()
+        vc2.view.backgroundColor = UIColor.purple
+
+        let vc3 = UIViewController()
+        vc3.view.backgroundColor = UIColor.blue
+
+        add(vc1, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+        add(vc2, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+        add(vc3, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+    }
+}
+```
+#### 2. 协议实现
+
+如果觉得用继承会增加代码的耦合性，还可以使用`protocol`。[猛击StackViewControllerProtocol](https://github.com/DarielChen/SwiftTips/blob/master/SwiftTipsDemo/DCTool/DCTool/StackViewControllerProtocol.swift)
+
+使用：添加三个屏幕宽度，高度为500的控制器`View`到`ViewController`上。
+
+```swift
+class ViewController: UIViewController, StackViewControllerProtocol {
+    var scrollView: UIScrollView = UIScrollView()
+    var stackView: UIStackView  = UIStackView()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        setUpStackAndScrollView()
+        
+        let vc1 = UIViewController()
+        vc1.view.backgroundColor = UIColor.orange
+
+        let vc2 = UIViewController()
+        vc2.view.backgroundColor = UIColor.purple
+
+        let vc3 = UIViewController()
+        vc3.view.backgroundColor = UIColor.blue
+
+        add(vc1, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+        add(vc2, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+        add(vc3, size: CGSize(width: UIScreen.main.bounds.width, height: 500))
+        
+    }
+}
+```
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="61">61.ExpressibleBy协议集:通过字面量实例化对象</h2>
+
+实现了`ExpressibleBy`协议集的对象，可以通过像字符串、整型、浮点型、数组、字典等直接实例化对象。
+
+这个协议集有什么用呢？
+
+### 1.实例化URL
+
+```swift
+// 字符串构造URL
+let url1: URL = URL(string: "https://github.com/DarielChen/iOSTips")!
+```
+
+实现了`ExpressibleBy`协议后，可以通过字符串直接构造URL
+
+```swift
+let url2: URL = "https://github.com/DarielChen/iOSTips"
+
+// ExpressibleByStringLiteral:通过字符串构造对象
+extension URL: ExpressibleByStringLiteral {
+    public init(stringLiteral value: String) {
+        guard let url = URL(string: value) else {
+            fatalError("Bad string, failed to create url from: \(value)")
+        }
+        self = url
+    }
+}
+```
+
+`String`类默认实现了`ExpressibleByStringLiteral`，当我们往`String`对象赋值字符串的时候，会通过构造方法初始化一个`String`对象。
+
+### 2.用时间戳和字符串实例化`Date`
+
+```swift
+// 字符串转Date
+let date1: Date = "2019-07-23"
+let date2: Date = "2019-07-23 16:12"
+let date3: Date = "2019-07-23 16:12:05"
+
+// 时间戳转Date
+let date4: Date = "1563873794"
+let date5: Date = 1563873794
+```
+
+具体实现 [猛击](https://github.com/DarielChen/SwiftTips/blob/master/SwiftTipsDemo/DCTool/Extension/Date%2BExtension.swift) 
+
+### 3.字典转模型
+
+```swift
+ // 字典转模型
+let Joan: Person = ["name": "Joan", "age": 10, "isMan": false]
+
+let persons: [Person] = [
+                        ["name": "Joan", "age": 10, "isMan": false],
+                        ["name": "Joan", "age": 10, "isMan": false]
+                    ]
+
+// json转模型
+let John: Person = #"{"name":"John", "age": 10, "isMan": false}"#
+```
+
+将字典转模型的实现放到构造方法中，在`extension`中实现这个构造方法，具体实现如下代码：
+
+```swift
+struct Person: ExpressibleByModelLiteral {
+    let name: String
+    let age: Int
+    let isMan: Bool
+}
+
+protocol ExpressibleByModelLiteral: Codable, ExpressibleByDictionaryLiteral, ExpressibleByStringLiteral {}
+extension ExpressibleByModelLiteral {
+
+    public init(dictionaryLiteral elements: (String, Any)...) {
+
+        let dict: [String: Any] = elements.reduce(into: [String: Any](), { $0[$1.0] = $1.1})
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: dict, options: [])
+            self = try JSONDecoder().decode(Self.self, from: jsonData)
+        }catch {
+            fatalError("Dictionary to model failed, error:\(error)")
+        }
+    }
+
+    public init(stringLiteral value: String) {
+        guard let data = value.data(using: .utf8) else {
+            fatalError("String to data failed")
+        }
+        do {
+            self = try JSONDecoder().decode(Self.self, from: data)
+        }catch {
+            fatalError("String to model failed, error:\(error)")
+        }
+    }
+}
+```
+
+### 4.`ExpressibleBy`协议集
+
+#### 集合
+
+```swift
+ExpressibleByArrayLiteral // 通过数组实例化对象
+ExpressibleByDictionaryLiteral // 通过字典实例化对象
+```
+
+#### 值
+
+```swift
+ExpressibleByIntegerLiteral // 通过整型实例化对象
+ExpressibleByFloatLiteral // 通过浮点数实例化对象
+ExpressibleByBooleanLiteral // 通过bool值实例化对象
+ExpressibleByNilLiteral // 用nil实例化对象，可选类型的底层实现
+
+```
+
+#### 字符串
+
+```swift
+ExpressibleByStringLiteral // 通过字符串实例化对象
+ExpressibleByExtendedGraphemeClusterLiteral // 将字符、字符集实例化对象
+ExpressibleByUnicodeScalarLiteral // 通过Unicode实例化对象
+ExpressibleByStringInterpolation // 通过字符串插值（"\(value)"）实例化对象
+```
+
+实现`ExpressibleBy`对应的协议后，可以将对应实例的构造方法实现交给编译器去做，直接通过赋值的方式完成对象实例化，代码可以更简洁，但代码的可阅读性会降低，是否使用还是看实际场景。
+
+[:arrow_up: 返回目录](#table-of-contents)  
+
+
+<h2 id="62">62.插件化TableView</h2>
+
+
+每次实现`TableView`都要写一堆重复的代码，包括注册`cell`,实现数据源方法，设置各种代理。
+
+这个过程可以简化，下面出了一种方案供参考。
+
+先说怎么使用：
+
+### 1. 设置数据源
+
+```swift
+let section = Section(items: [
+            ENCellModel(name: "chili", imageStr: "chili"),
+            ENCellModel(name: "mushroom", imageStr: "mushroom"),
+            ENCellModel(name: "radish", imageStr: "radish")
+            ])
+let dataSource = DataSource(sections: [section])
+```
+
+`DataSource`是一个数组，负责管理所有的`section`。
+
+### 2. 配置cell
+
+```swift
+
+let configuartor = Configurator{ (cell, model: ENCellModel, tableView, indexPath) -> NibTableViewCell in
+    cell.iconLabel.text = model.name
+    cell.iconView.image = UIImage(named: model.imageStr)
+    return cell
+}
+
+```
+
+通过闭包回调设置`Cell`。
+
+### 3. 初始化`TableView`，传入数据源和配置
+
+```swift
+
+let pluginTableView = PluginTableView(frame: view.bounds, style: .plain, dataSource: dataSource, configurator: configuartor)
+pluginTableView.tableView.rowHeight = 80
+view.addSubview(pluginTableView)
+
+```
+
+像`View`一样添加到页面上。
+
+### 4. 通过闭包回调`TableView`代理
+
+```swift
+// didSelectRow回调
+pluginTableView.didSelectRow = { [weak self] (tableView, indexPath) in
+
+}
+```
+
+### 5. 支持不同类型的`Cell`
+
+```swift
+// 在设置section的时候一下包装，包装section中不同的model
+private enum CellModel {
+    case CNCell(CNCellModel)
+    case ENCell(ENCellModel)
+}
+// 重新实现ConfiguratorType协议，在里面区分cell
+private struct AggregateConfigurator: ConfiguratorType {
+    let cellConfigurator1: Configurator<CNCellModel, CodeTableViewCell>
+    let cellConfigurator2: Configurator<ENCellModel, NibTableViewCell>
+
+    func reuseIdentifier(for item: CellModel, indexPath: IndexPath) -> String {
+        switch item {
+        case .CNCell:
+            return cellConfigurator1.reuseIdentifier
+        case .ENCell:
+            return cellConfigurator2.reuseIdentifier
+        }
+    }
+
+    func configure(cell: UITableViewCell, item: CellModel, tableView: UITableView, indexPath: IndexPath) -> UITableViewCell {
+
+        switch item {
+        case .CNCell(let model):
+            return cellConfigurator1.configuredCell(for: model, tableView: tableView, indexPath: indexPath)
+        case .ENCell(let model):
+            return cellConfigurator2.configuredCell(for: model, tableView: tableView, indexPath: indexPath)
+        }
+    }
+
+    func registerCells(in tableView: UITableView) {
+        cellConfigurator1.registerCells(in: tableView)
+        cellConfigurator2.registerCells(in: tableView)
+    }
+}
+```
+
+```swift
+
+// 分开配置section
+let section1 = Section<CellModel>(items: [
+            .CNCell(CNCellModel(name: "柠檬", imageStr: "lemon")),
+            .CNCell(CNCellModel(name: "橙子", imageStr: "orange")),
+            .CNCell(CNCellModel(name: "西瓜", imageStr: "watermelon"))
+            ])
+let section2 = Section<CellModel>(items: [
+            .ENCell(ENCellModel(name: "chili", imageStr: "chili")),
+            .ENCell(ENCellModel(name: "mushroom", imageStr: "mushroom")),
+            .ENCell(ENCellModel(name: "radish", imageStr: "radish"))
+            ])
+
+let dataSource = DataSource(sections: [section1, section2])
+
+let configuartor1 = Configurator { (cell, model: CNCellModel, tableView, indexPath) -> CodeTableViewCell in
+    cell.iconLabel.text = model.name
+    cell.iconView.image = UIImage(named: model.imageStr)
+    return cell
+}
+
+let configuartor2 = Configurator { (cell, model: ENCellModel, tableView, indexPath) -> NibTableViewCell in
+    cell.iconLabel.text = model.name
+    cell.iconView.image = UIImage(named: model.imageStr)
+    return cell
+}
+
+// 分开cell属性设置，通过刚刚实现的AggregateConfigurator做统一管理
+let aggregate = AggregateConfigurator(cellConfigurator1: configuartor1, cellConfigurator2: configuartor2)
+
+let pluginTableView = PluginTableView(frame: view.bounds, style: .grouped, dataSource: dataSource, configurator: aggregate)
+
+pluginTableView.tableView.rowHeight = 80
+view.addSubview(pluginTableView)
+
+```
+
+具体实现 [猛击](https://github.com/DarielChen/iOSTips/blob/master/Demo/62.%e6%8f%92%e4%bb%b6%e5%8c%96TableView//PluginTableView/PluginTableView)
+
+
+[:arrow_up: 返回目录](#table-of-contents)  
